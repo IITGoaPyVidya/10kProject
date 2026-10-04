@@ -66,13 +66,13 @@ def extract_document(
 
 
 def has_content(text: str) -> bool:
-    """True if the document has any text beyond page markers."""
-    return bool(re.sub(r"\[PAGE \d+\]", "", text).strip())
+    """True if the document has any text beyond page/time markers."""
+    return bool(re.sub(r"\[PAGE \d+\]|\[TIME [\d:]+\]", "", text).strip())
 
 
 def split_sentences(text: str, min_chars: int = 25) -> list[str]:
     """Split into sentences; short fragments, page markers and table rows are dropped."""
-    text = re.sub(r"\[PAGE \d+\]|\[TABLES ON THIS PAGE\]", " ", text)
+    text = re.sub(r"\[PAGE \d+\]|\[TIME [\d:]+\]|\[TABLES ON THIS PAGE\]", " ", text)
     text = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("|"))
     flat = re.sub(r"\s*\n\s*", " ", text)
     parts = re.split(r"(?<=[.!?])\s+(?=[A-Z\"'(])", flat)

@@ -4,11 +4,12 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.config import Settings, get_settings
 from app.services.jobs import JobStore
-from app.services.pipeline import run_job
+from app.services.pipeline import run_job, run_youtube_job
+from app.services.youtube import extract_video_id
 
 router = APIRouter()
 
@@ -26,6 +27,11 @@ class ConfigResponse(BaseModel):
 class JobCreated(BaseModel):
     id: str
     status: str
+
+
+class YoutubeRequest(BaseModel):
+    url: str = Field(min_length=1, max_length=300)
+    mode: Mode = "llm"
 
 
 class JobResponse(BaseModel):
@@ -80,6 +86,14 @@ async def _read_pdf(file: UploadFile, max_bytes: int) -> bytes:
     return bytes(buf)
 
 
+def _check_mode(settings: Settings, mode: str, doc_type: str) -> None:
+    if mode in ("llm", "both") and not settings.llm_configured:
+        raise HTTPException(400, "NVIDIA_API_KEY is not configured on the server.")
+    if mode in ("local", "both") and doc_type == "transcript" and not settings.local_model_available:
+        raise HTTPException(400, "Local FinBERT is not installed in this deployment "
+                                 "(build the backend with INSTALL_LOCAL=true).")
+
+
 @router.post("/api/v1/analyses", response_model=JobCreated, status_code=202, tags=["analyses"])
 async def create_analysis(
     file: Annotated[UploadFile, File()],
@@ -89,11 +103,7 @@ async def create_analysis(
     store: JobStore = Depends(get_store),
     executor: ThreadPoolExecutor = Depends(get_executor),
 ) -> JobCreated:
-    if mode in ("llm", "both") and not settings.llm_configured:
-        raise HTTPException(400, "NVIDIA_API_KEY is not configured on the server.")
-    if mode in ("local", "both") and doc_type == "transcript" and not settings.local_model_available:
-        raise HTTPException(400, "Local FinBERT is not installed in this deployment "
-                                 "(build the backend with INSTALL_LOCAL=true).")
+    _check_mode(settings, mode, doc_type)
 
     data = await _read_pdf(file, settings.max_upload_mb * (1 << 20))
 
@@ -107,6 +117,31 @@ async def create_analysis(
 
     job = store.create(doc_type, mode, (file.filename or "document.pdf")[:200], cache_key)
     executor.submit(run_job, store, job.id, data, settings)
+    return JobCreated(id=job.id, status=job.status)
+
+
+@router.post("/api/v1/analyses/youtube", response_model=JobCreated, status_code=202, tags=["analyses"])
+def create_youtube_analysis(
+    body: YoutubeRequest,
+    settings: Settings = Depends(get_settings),
+    store: JobStore = Depends(get_store),
+    executor: ThreadPoolExecutor = Depends(get_executor),
+) -> JobCreated:
+    _check_mode(settings, body.mode, "transcript")
+    try:
+        video_id = extract_video_id(body.url)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+    cache_key = f"yt:{video_id}:{body.mode}:{settings.nvidia_model}"
+    cached = store.find_cached(cache_key)
+    if cached:
+        return JobCreated(id=cached.id, status=cached.status)
+    if store.pending_count() >= settings.max_queued_jobs:
+        raise HTTPException(429, "Server is busy; try again shortly.", headers={"Retry-After": "30"})
+
+    job = store.create("transcript", body.mode, f"youtube:{video_id}", cache_key)
+    executor.submit(run_youtube_job, store, job.id, body.url, settings)
     return JobCreated(id=job.id, status=job.status)
 
 

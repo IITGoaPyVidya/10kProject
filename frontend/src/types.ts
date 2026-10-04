@@ -1,4 +1,5 @@
 export type DocType = "transcript" | "filing";
+export type TabId = DocType | "youtube";
 export type Mode = "llm" | "local" | "both";
 export type JobStatus = "queued" | "processing" | "completed" | "failed";
 
@@ -21,7 +22,8 @@ export interface Sentiment {
 export interface RedFlags { score: number; flags: { flag: string; weight: number; mentions: number }[] }
 
 export interface AnalysisResult {
-  stats: { pages: number; chars: number };
+  stats: { pages?: number; chars: number; source?: string; video_id?: string; duration_s?: number };
+  transcript?: string;
   sentiment?: Sentiment;
   red_flags?: RedFlags;
   llm?: { model: string; report_markdown: string };

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { createAnalysis, getAnalysis, getConfig } from "./api";
-import { Results } from "./components/Results";
-import type { AppConfig, DocType, Job, Mode } from "./types";
+import { createAnalysis, createYoutubeAnalysis, getAnalysis, getConfig } from "./api";
+import { Results, TranscriptBox } from "./components/Results";
+import type { AppConfig, Job, Mode, TabId } from "./types";
 
-const TABS: { id: DocType; label: string }[] = [
+const TABS: { id: TabId; label: string }[] = [
   { id: "transcript", label: "Earnings Transcripts" },
   { id: "filing", label: "10-K / Filings" },
+  { id: "youtube", label: "YouTube" },
 ];
 const POLL_MS = 2000;
 
@@ -14,7 +15,8 @@ export default function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("llm");
-  const [docType, setDocType] = useState<DocType>("transcript");
+  const [docType, setDocType] = useState<TabId>("transcript");
+  const [ytUrl, setYtUrl] = useState("");
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -38,22 +40,29 @@ export default function App() {
       .catch((e) => { setError(e.message); setBusy(false); });
   }, []);
 
-  const onFile = async (file: File | undefined) => {
-    if (!file) return;
+  const start = async (submit: () => Promise<{ id: string }>) => {
     window.clearTimeout(timer.current);
     setError(null);
     setJob(null);
     setBusy(true);
     try {
-      const { id } = await createAnalysis(file, docType, mode);
-      poll(id);
+      poll((await submit()).id);
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
     }
   };
 
-  const switchTab = (t: DocType) => {
+  const onFile = (file: File | undefined) => {
+    if (file && docType !== "youtube") void start(() => createAnalysis(file, docType, mode));
+  };
+
+  const onYoutube = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (ytUrl.trim()) void start(() => createYoutubeAnalysis(ytUrl.trim(), mode));
+  };
+
+  const switchTab = (t: TabId) => {
     window.clearTimeout(timer.current);
     setDocType(t); setJob(null); setError(null); setBusy(false);
   };
@@ -101,12 +110,23 @@ export default function App() {
           ))}
         </nav>
 
-        <label className="upload">
-          <input type="file" accept="application/pdf" disabled={busy}
-                 onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = ""; }} />
-          <span>{busy ? "Processing..." : "Choose a PDF to analyze"}</span>
-          {config && <small>Max {config.max_upload_mb} MB. Long reports can take a few minutes.</small>}
-        </label>
+        {docType === "youtube" ? (
+          <form className="upload" onSubmit={onYoutube}>
+            <span>Paste a YouTube link (video must have captions)</span>
+            <div className="row">
+              <input type="url" placeholder="https://www.youtube.com/watch?v=..." value={ytUrl}
+                     onChange={(e) => setYtUrl(e.target.value)} disabled={busy} required />
+              <button type="submit" disabled={busy}>{busy ? "Processing..." : "Get transcript & analyze"}</button>
+            </div>
+          </form>
+        ) : (
+          <label className="upload">
+            <input type="file" accept="application/pdf" disabled={busy}
+                   onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = ""; }} />
+            <span>{busy ? "Processing..." : "Choose a PDF to analyze"}</span>
+            {config && <small>Max {config.max_upload_mb} MB. Long reports can take a few minutes.</small>}
+          </label>
+        )}
 
         {error && <div className="banner err">{error}</div>}
         {job && (job.status === "queued" || job.status === "processing") && (
@@ -114,6 +134,9 @@ export default function App() {
             <div className="bar"><div style={{ width: `${Math.round(job.progress * 100)}%` }} /></div>
             <span>{job.message}</span>
           </div>
+        )}
+        {job?.status === "processing" && job.result?.transcript && (
+          <TranscriptBox text={job.result.transcript} />
         )}
         {job?.status === "failed" && <div className="banner err">{job.error ?? "Analysis failed."}</div>}
         {job?.status === "completed" && job.result && <Results job={job} result={job.result} />}

@@ -18,6 +18,11 @@ main { padding: 24px 32px; max-width: 1100px; }
 .tabs button.active { border-color: #2563eb; color: #2563eb; font-weight: 600; }
 .upload { display: flex; flex-direction: column; gap: 6px; border: 2px dashed #cbd5e1; border-radius: 10px; padding: 24px; background: #fff; cursor: pointer; }
 .upload small { color: #6b7280; }
+.upload .row { display: flex; gap: 8px; }
+.upload .row input { flex: 1; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px; }
+.upload .row button { padding: 8px 16px; border: 0; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
+.upload .row button:disabled { background: #93c5fd; cursor: not-allowed; }
+.transcript { max-height: 320px; overflow: auto; white-space: pre-wrap; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; font-size: 13px; }
 .banner { padding: 12px 16px; border-radius: 8px; margin-top: 16px; }
 .err { color: #b91c1c; } .banner.err { background: #fee2e2; }
 .progress { margin-top: 16px; }

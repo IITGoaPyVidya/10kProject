@@ -81,12 +81,24 @@ function RedFlagView({ r }: { r: RedFlags }) {
   );
 }
 
+export function TranscriptBox({ text }: { text: string }) {
+  return (
+    <details open>
+      <summary><b>Transcript</b></summary>
+      <pre className="transcript">{text}</pre>
+    </details>
+  );
+}
+
 export function Results({ job, result }: { job: Job; result: AnalysisResult }) {
   return (
     <section className="results">
       <p className="muted">
-        {job.filename} - {result.stats.pages} pages, {result.stats.chars.toLocaleString()} characters
+        {job.filename} - {result.stats.pages !== undefined
+          ? `${result.stats.pages} pages`
+          : `${Math.round((result.stats.duration_s ?? 0) / 60)} min video`}, {result.stats.chars.toLocaleString()} characters
       </p>
+      {result.transcript && <TranscriptBox text={result.transcript} />}
       {result.sentiment && <SentimentView s={result.sentiment} />}
       {result.red_flags && <RedFlagView r={result.red_flags} />}
       {result.llm && (

@@ -23,3 +23,11 @@ export async function createAnalysis(file: File, docType: DocType, mode: Mode): 
 }
 
 export const getAnalysis = (id: string): Promise<Job> => fetch(`/api/v1/analyses/${id}`).then(parse<Job>);
+
+export async function createYoutubeAnalysis(url: string, mode: Mode): Promise<{ id: string }> {
+  return parse(await fetch("/api/v1/analyses/youtube", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url, mode }),
+  }));
+}
