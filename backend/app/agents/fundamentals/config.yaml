@@ -1,0 +1,6 @@
+title: Fundamentals Analyst
+description: Valuation, growth, profitability, balance-sheet strength and cash flow from market data.
+
+llm:
+  model: ${NVIDIA_MODEL:nvidia/nemotron-3-super-120b-a12b}
+  temperature: 0.2

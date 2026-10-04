@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     nvidia_model: str = "nvidia/nemotron-3-super-120b-a12b"
     llm_timeout_s: float = 180.0
     llm_max_retries: int = 3
-    llm_max_output_tokens: int = 4096
+    llm_max_output_tokens: int = 8192
+    llm_enable_thinking: bool = False  # reasoning mode can exhaust the token budget and return no content
 
     # Long-document map-reduce sizing (~4 chars/token)
     single_pass_chars: int = 100_000

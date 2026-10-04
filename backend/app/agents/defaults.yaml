@@ -1,0 +1,20 @@
+# Defaults inherited by every agent. Each agent folder's config.yaml overrides any of these.
+# ${NAME:fallback} reads an environment variable at load time.
+enabled: true
+
+llm:
+  base_url: ${NVIDIA_BASE_URL:https://integrate.api.nvidia.com/v1}
+  model: ${NVIDIA_MODEL:nvidia/nemotron-3-super-120b-a12b}
+  api_key_env: NVIDIA_API_KEY   # name of the env var holding this agent's key
+  temperature: 0.2
+  max_tokens: 8192
+  timeout_s: 180
+  max_retries: 3
+  # Provider-specific request fields. Set to null for providers that reject unknown fields.
+  extra_body:
+    response_format:
+      type: json_object         # remove for providers without JSON mode
+    chat_template_kwargs:
+      enable_thinking: false    # reasoning mode can exhaust max_tokens and return nothing
+
+params: {}

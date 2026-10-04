@@ -1,4 +1,4 @@
-import type { AppConfig, DocType, Job, Mode } from "./types";
+import type { AgentInfo, AppConfig, DocType, Job, Mode, ResearchJob } from "./types";
 
 async function parse<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -23,6 +23,15 @@ export async function createAnalysis(file: File, docType: DocType, mode: Mode): 
 }
 
 export const getAnalysis = (id: string): Promise<Job> => fetch(`/api/v1/analyses/${id}`).then(parse<Job>);
+
+export const getAgents = (): Promise<AgentInfo[]> => fetch("/api/v1/research/agents").then(parse<AgentInfo[]>);
+
+export async function startResearch(form: FormData): Promise<{ id: string }> {
+  return parse(await fetch("/api/v1/research", { method: "POST", body: form }));
+}
+
+export const getResearch = (id: string, since: number): Promise<ResearchJob> =>
+  fetch(`/api/v1/research/${id}?since=${since}`).then(parse<ResearchJob>);
 
 export async function createYoutubeAnalysis(url: string, mode: Mode): Promise<{ id: string }> {
   return parse(await fetch("/api/v1/analyses/youtube", {

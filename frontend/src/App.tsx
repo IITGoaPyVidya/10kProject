@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { createAnalysis, createYoutubeAnalysis, getAnalysis, getConfig } from "./api";
 import { Results, TranscriptBox } from "./components/Results";
+import { ResearchDesk } from "./components/research/ResearchDesk";
 import type { AppConfig, Job, Mode, TabId } from "./types";
 
 const TABS: { id: TabId; label: string }[] = [
+  { id: "research", label: "Research Desk" },
   { id: "transcript", label: "Earnings Transcripts" },
   { id: "filing", label: "10-K / Filings" },
   { id: "youtube", label: "YouTube" },
@@ -15,7 +17,7 @@ export default function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("llm");
-  const [docType, setDocType] = useState<TabId>("transcript");
+  const [docType, setDocType] = useState<TabId>("research");
   const [ytUrl, setYtUrl] = useState("");
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +56,9 @@ export default function App() {
   };
 
   const onFile = (file: File | undefined) => {
-    if (file && docType !== "youtube") void start(() => createAnalysis(file, docType, mode));
+    if (file && (docType === "transcript" || docType === "filing")) {
+      void start(() => createAnalysis(file, docType, mode));
+    }
   };
 
   const onYoutube = (e: React.FormEvent) => {
@@ -67,6 +71,7 @@ export default function App() {
     setDocType(t); setJob(null); setError(null); setBusy(false);
   };
 
+  const isResearch = docType === "research";
   const llmOk = !!config?.llm_configured;
   const localOk = docType === "filing" || !!config?.local_model_available;
   const modeOptions: { id: Mode; label: string; enabled: boolean }[] = [
@@ -79,6 +84,9 @@ export default function App() {
     <div className="layout">
       <aside className="sidebar">
         <h1>AlphaInsight</h1>
+        {isResearch ? (
+          <p className="muted">Each agent uses its own model, set in <code>backend/app/agents/&lt;agent&gt;/config.yaml</code>.</p>
+        ) : (<>
         <h3>Analysis mode</h3>
         {modeOptions.map((o) => (
           <label key={o.id} className={o.enabled ? "" : "disabled"}>
@@ -87,11 +95,12 @@ export default function App() {
             {o.label}
           </label>
         ))}
+        </>)}
         <h3>System status</h3>
         {configError && <p className="err">API unreachable: {configError}</p>}
         {config && (
           <ul className="status">
-            <li><b>Mode:</b> {modeOptions.find((o) => o.id === mode)?.label}</li>
+            {!isResearch && <li><b>Mode:</b> {modeOptions.find((o) => o.id === mode)?.label}</li>}
             <li><span className={`dot ${llmOk ? "ok" : "off"}`} />
               LLM API: {llmOk ? "Active" : "Inactive (no key)"}</li>
             <li className="muted">{config.llm_model}</li>
@@ -101,7 +110,7 @@ export default function App() {
         )}
       </aside>
 
-      <main>
+      <main className={isResearch ? "wide" : ""}>
         <nav className="tabs">
           {TABS.map((t) => (
             <button key={t.id} className={t.id === docType ? "active" : ""} onClick={() => switchTab(t.id)}>
@@ -110,6 +119,10 @@ export default function App() {
           ))}
         </nav>
 
+        {/* Always mounted so a running research job keeps polling while you browse other tabs */}
+        <div hidden={!isResearch}><ResearchDesk /></div>
+
+        {!isResearch && (<>
         {docType === "youtube" ? (
           <form className="upload" onSubmit={onYoutube}>
             <span>Paste a YouTube link (video must have captions)</span>
@@ -140,6 +153,7 @@ export default function App() {
         )}
         {job?.status === "failed" && <div className="banner err">{job.error ?? "Analysis failed."}</div>}
         {job?.status === "completed" && job.result && <Results job={job} result={job.result} />}
+        </>)}
       </main>
     </div>
   );

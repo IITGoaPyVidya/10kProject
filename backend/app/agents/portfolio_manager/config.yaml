@@ -1,0 +1,16 @@
+title: Portfolio Manager
+description: Weighs every analyst and the bull/bear debate into the final stock decision.
+
+llm:
+  model: ${NVIDIA_MODEL:nvidia/nemotron-3-super-120b-a12b}
+  temperature: 0.2
+  max_tokens: 8192
+
+params:
+  # Relative weight of each analyst in the consensus score (multiplied by that analyst's confidence).
+  weights:
+    concall: 1.0
+    annual_report: 1.0
+    fundamentals: 1.2
+    technicals: 0.8
+    news: 0.5

@@ -1,5 +1,7 @@
+export * from "./researchTypes";
+
 export type DocType = "transcript" | "filing";
-export type TabId = DocType | "youtube";
+export type TabId = DocType | "youtube" | "research";
 export type Mode = "llm" | "local" | "both";
 export type JobStatus = "queued" | "processing" | "completed" | "failed";
 

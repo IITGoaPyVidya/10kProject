@@ -1,0 +1,11 @@
+title: Annual Report Analyst
+description: Audits the annual report / 10-K - risk factors, governance, accounting quality, tables.
+
+llm:
+  model: ${NVIDIA_MODEL:nvidia/nemotron-3-super-120b-a12b}
+  temperature: 0.2
+
+params:
+  single_pass_chars: 100000
+  chunk_chars: 60000
+  workers: 4

@@ -1,7 +1,7 @@
 :root { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #111827; background: #f9fafb; }
 * { box-sizing: border-box; }
 body { margin: 0; }
-.layout { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+.layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 100vh; }
 .sidebar { background: #fff; border-right: 1px solid #e5e7eb; padding: 20px; }
 .sidebar h1 { font-size: 20px; margin: 0 0 16px; }
 .sidebar h3 { font-size: 12px; text-transform: uppercase; color: #6b7280; margin: 20px 0 8px; }
@@ -40,4 +40,4 @@ th { position: sticky; top: 0; background: #f8fafc; }
 .markdown { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 24px 16px; line-height: 1.55; overflow-x: auto; }
 .markdown table { margin: 12px 0; }
 .markdown th, .markdown td { border: 1px solid #e5e7eb; }
-@media (max-width: 800px) { .layout { grid-template-columns: 1fr; } .sidebar { border-right: 0; border-bottom: 1px solid #e5e7eb; } }
+@media (max-width: 800px) { .layout { grid-template-columns: minmax(0, 1fr); } .sidebar { border-right: 0; border-bottom: 1px solid #e5e7eb; } }

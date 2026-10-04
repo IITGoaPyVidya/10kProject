@@ -25,10 +25,15 @@ def _chat(client: OpenAI, settings: Settings, user: str) -> str:
             top_p=1,
             max_tokens=settings.llm_max_output_tokens,
             stream=False,
+            extra_body={"chat_template_kwargs": {"enable_thinking": settings.llm_enable_thinking}},
         )
     except Exception as exc:  # SDK already retried 429/5xx with backoff
         raise LlmError(f"LLM request failed: {type(exc).__name__}: {exc}") from exc
-    return resp.choices[0].message.content or ""
+    choice = resp.choices[0]
+    if not (choice.message.content or "").strip():
+        raise LlmError(f"LLM returned no content (finish_reason={choice.finish_reason}); "
+                       "the model may have used its whole token budget on reasoning.")
+    return choice.message.content
 
 
 def run_llm_analysis(text: str, doc_type: str, settings: Settings,

@@ -1,0 +1,9 @@
+title: Technical Analyst
+description: Trend, momentum, volatility, support/resistance and volume from 2 years of daily prices.
+
+llm:
+  model: ${NVIDIA_MODEL:nvidia/nemotron-3-super-120b-a12b}
+  temperature: 0.3
+
+params:
+  history_period: 2y

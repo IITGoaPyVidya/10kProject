@@ -1,0 +1,11 @@
+title: Earnings Call Analyst
+description: Reads the concall transcript like an adversarial analyst - commitments, dodged questions, tone shifts.
+
+llm:
+  model: ${NVIDIA_MODEL:nvidia/nemotron-3-super-120b-a12b}
+  temperature: 0.2
+
+params:
+  single_pass_chars: 100000   # longer transcripts are condensed section by section first
+  chunk_chars: 60000
+  workers: 4

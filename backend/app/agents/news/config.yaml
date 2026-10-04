@@ -1,0 +1,9 @@
+title: News and Catalyst Analyst
+description: Scans recent headlines for catalysts, sentiment and event risk.
+
+llm:
+  model: ${NVIDIA_MODEL:nvidia/nemotron-3-super-120b-a12b}
+  temperature: 0.3
+
+params:
+  max_headlines: 10
