@@ -1,6 +1,13 @@
 export type AgentStage = "analyst" | "debate" | "decision";
 export type AgentStatus = "pending" | "working" | "done" | "skipped" | "failed";
 
+export interface SymbolMatch {
+  symbol: string;
+  name: string;
+  exchange: string;
+  type?: string | null;
+}
+
 export interface AgentInfo {
   name: string;
   title: string;

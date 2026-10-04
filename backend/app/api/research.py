@@ -4,9 +4,11 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from app.agents.registry import load_agents
+from app.agents.tools import market_data
 from app.agents.tools.market_data import normalize_ticker
 from app.api.routes import _read_pdf
 from app.core.config import Settings, get_settings
@@ -28,6 +30,13 @@ class AgentInfo(BaseModel):
     model: str
     needs: str
     llm_ready: bool
+
+
+class SymbolMatch(BaseModel):
+    symbol: str
+    name: str
+    exchange: str
+    type: str | None = None
 
 
 class ResearchCreated(BaseModel):
@@ -68,6 +77,13 @@ def list_agents() -> list[AgentInfo]:
             for a in load_agents().values()]
 
 
+@router.get("/search", response_model=list[SymbolMatch])
+async def search_symbols(q: Annotated[str, Query(min_length=1, max_length=60)],
+                         prefer: Annotated[Literal["NSE", "BSE", ""], Query()] = "") -> list[SymbolMatch]:
+    """Closest stock matches for what the user has typed so far (powers the ticker autocomplete)."""
+    return [SymbolMatch(**m) for m in await run_in_threadpool(market_data.search_symbols, q, prefer)]
+
+
 @router.post("", response_model=ResearchCreated, status_code=202)
 async def start_research(
     ticker: Annotated[str, Form()],
@@ -104,6 +120,11 @@ async def start_research(
             extract_video_id(yt)
         except ValueError as exc:
             raise HTTPException(400, str(exc))
+
+    if not await run_in_threadpool(market_data.symbol_exists, ticker):
+        typed = ticker.split(".")[0]
+        close = await run_in_threadpool(market_data.search_symbols, typed, exchange if exchange in ("NSE", "BSE") else "")
+        raise HTTPException(404, {"message": f"No market data found for '{ticker}'.", "suggestions": close})
 
     limit = settings.max_upload_mb * (1 << 20)
     concall_bytes = await _read_pdf(concall_pdf, limit) if concall_pdf and concall_pdf.filename else None

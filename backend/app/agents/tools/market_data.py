@@ -1,5 +1,6 @@
 """Market data access (yfinance). Kept in one module so tests can monkeypatch the three fetchers."""
 import math
+import time
 from typing import Any
 
 import pandas as pd
@@ -55,6 +56,55 @@ def get_fundamentals(ticker: str) -> dict:
             "operatingMargins", "revenueGrowth", "earningsGrowth", "debtToEquity", "currentRatio",
             "dividendYield", "beta", "fiftyTwoWeekHigh", "fiftyTwoWeekLow"]
     return {"info": {k: _clean(info.get(k)) for k in keys}, "series": series[-5:], "free_cash_flow": fcf}
+
+
+def symbol_exists(ticker: str) -> bool:
+    """True if Yahoo has recent prices for the symbol."""
+    try:
+        return not yf.Ticker(ticker).history(period="5d").empty
+    except Exception:
+        return False
+
+
+_SEARCH_TYPES = {"EQUITY", "ETF", "INDEX"}
+_search_cache: dict[tuple[str, str], tuple[float, list[dict]]] = {}
+_SEARCH_TTL_S = 120
+
+
+def search_symbols(query: str, prefer: str = "", limit: int = 8) -> list[dict]:
+    """Closest Yahoo matches for a partial name or symbol; `prefer` (NSE/BSE) ranks that exchange first."""
+    q = query.strip()
+    if len(q) < 2:
+        return []
+    key = (q.lower(), prefer)
+    hit = _search_cache.get(key)
+    if hit and time.time() - hit[0] < _SEARCH_TTL_S:
+        return hit[1]
+
+    quotes: list[dict] = []
+    for _ in range(2):  # Yahoo's search occasionally returns an empty page; retry once
+        try:
+            quotes = yf.Search(q, max_results=limit + 6, news_count=0).quotes or []
+        except Exception:
+            quotes = []
+        if quotes:
+            break
+
+    out, seen = [], set()
+    for x in quotes:
+        sym = x.get("symbol")
+        if not sym or sym in seen or x.get("quoteType") not in _SEARCH_TYPES:
+            continue
+        seen.add(sym)
+        out.append({"symbol": sym, "name": x.get("longname") or x.get("shortname") or sym,
+                    "exchange": x.get("exchDisp") or x.get("exchange") or "", "type": x.get("quoteType")})
+    suffix = {"NSE": ".NS", "BSE": ".BO"}.get(prefer)
+    if suffix:
+        out.sort(key=lambda r: not r["symbol"].endswith(suffix))  # stable: keeps Yahoo's order within groups
+    out = out[:limit]
+    if out:
+        _search_cache[key] = (time.time(), out)
+    return out
 
 
 def get_news(ticker: str, company: str = "", limit: int = 10) -> list[dict]:

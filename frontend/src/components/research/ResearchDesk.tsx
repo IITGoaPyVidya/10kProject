@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { getAgents, getResearch, startResearch } from "../../api";
-import type { AgentInfo, ResearchEvent, ResearchJob } from "../../types";
+import { ApiError, getAgents, getResearch, startResearch } from "../../api";
+import type { AgentInfo, ResearchEvent, ResearchJob, SymbolMatch } from "../../types";
 import { ActivityFeed } from "./ActivityFeed";
 import { AgentReportPanel } from "./AgentReportPanel";
 import { MissionControl } from "./MissionControl";
+import { SymbolPicker } from "./SymbolPicker";
 import { Verdict } from "./Verdict";
 
 const POLL_MS = 1000;
@@ -34,6 +35,8 @@ export function ResearchDesk() {
   const [concall, setConcall] = useState<File | null>(null);
   const [annual, setAnnual] = useState<File | null>(null);
   const [yt, setYt] = useState("");
+  const [picked1, setPicked1] = useState<SymbolMatch | null>(null);
+  const [didYouMean, setDidYouMean] = useState<SymbolMatch[]>([]);
 
   const [job, setJob] = useState<ResearchJob | null>(null);
   const [events, setEvents] = useState<ResearchEvent[]>([]);
@@ -72,11 +75,12 @@ export function ResearchDesk() {
   const run = async (e: React.FormEvent) => {
     e.preventDefault();
     window.clearTimeout(timer.current);
-    setError(null); setJob(null); setEvents([]); setSelected(null); since.current = 0;
+    setError(null); setDidYouMean([]); setJob(null); setEvents([]); setSelected(null); since.current = 0;
     setBusy(true);
+    const exactPick = picked1 && picked1.symbol === ticker.trim();
     const fd = new FormData();
     fd.append("ticker", ticker.trim());
-    fd.append("exchange", exchange);
+    fd.append("exchange", exactPick ? "AS_TYPED" : exchange);
     fd.append("company", company.trim());
     fd.append("horizon", horizon);
     fd.append("agents", [...picked].join(","));
@@ -88,8 +92,17 @@ export function ResearchDesk() {
       void poll(id);
     } catch (err) {
       setError((err as Error).message);
+      if (err instanceof ApiError) setDidYouMean(err.suggestions);
       setBusy(false);
     }
+  };
+
+  const pickSymbol = (m: SymbolMatch) => {
+    setPicked1(m);
+    setTicker(m.symbol);
+    setCompany(m.name);
+    setError(null);
+    setDidYouMean([]);
   };
 
   const toggle = (name: string) =>
@@ -106,10 +119,8 @@ export function ResearchDesk() {
     <div className="desk">
       <form className="card desk-form" onSubmit={run}>
         <div className="row-fields">
-          <label>Ticker
-            <input value={ticker} onChange={(e) => setTicker(e.target.value)} placeholder="TCS, RELIANCE, AAPL"
-                   required disabled={active} />
-          </label>
+          <SymbolPicker value={ticker} onChange={setTicker} onPick={pickSymbol} prefer={exchange === "BSE" ? "BSE" : "NSE"}
+                        disabled={active} />
           <label>Exchange
             <select value={exchange} onChange={(e) => setExchange(e.target.value)} disabled={active}>
               <option value="NSE">India - NSE (.NS)</option>
@@ -162,7 +173,21 @@ export function ResearchDesk() {
         </div>
       </form>
 
-      {error && <div className="banner err">{error}</div>}
+      {error && (
+        <div className="banner err">
+          {error}
+          {didYouMean.length > 0 && (
+            <div className="dym">
+              <span>Did you mean:</span>
+              {didYouMean.map((m) => (
+                <button type="button" key={m.symbol} onClick={() => pickSymbol(m)}>
+                  <b>{m.symbol}</b> {m.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {job && (
         <>

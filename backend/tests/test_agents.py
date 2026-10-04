@@ -39,6 +39,7 @@ def fake_world(monkeypatch):
     monkeypatch.setattr(market_data, "get_history", lambda t, p="2y": fake_prices())
     monkeypatch.setattr(market_data, "get_fundamentals", lambda t: FUND)
     monkeypatch.setattr(market_data, "get_news", lambda t, c="", n=10: NEWS)
+    monkeypatch.setattr(market_data, "symbol_exists", lambda t: True)
     llm_mod.set_llm_factory(FakeLLM)
     yield
     llm_mod.set_llm_factory(None)
@@ -133,3 +134,31 @@ def test_parse_json_repairs_unquoted_strings():
     out = parse_json(bad)
     assert out["score"] == 55 and out["headline"].startswith("TCS is solid") and out["key_points"] == ["a"]
 
+
+
+def test_symbol_search_and_not_found_suggestions(fake_world, client, monkeypatch):
+    hits = [{"symbol": "TCS.NS", "name": "Tata Consultancy Services Limited", "exchange": "NSE", "type": "EQUITY"}]
+    monkeypatch.setattr(market_data, "search_symbols", lambda q, prefer="", limit=8: hits)
+    assert client.get("/api/v1/research/search", params={"q": "tata cons"}).json()[0]["symbol"] == "TCS.NS"
+
+    monkeypatch.setattr(market_data, "symbol_exists", lambda t: False)
+    r = client.post("/api/v1/research", data={"ticker": "tata consultancy"})
+    assert r.status_code == 400  # contains a space: rejected before any lookup
+    r = client.post("/api/v1/research", data={"ticker": "TATACONS", "exchange": "NSE"})
+    assert r.status_code == 404
+    assert r.json()["detail"]["suggestions"][0]["symbol"] == "TCS.NS"
+
+
+def test_search_ranks_preferred_exchange(monkeypatch):
+    class FakeSearch:
+        def __init__(self, *a, **k):
+            self.quotes = [
+                {"symbol": "RS", "shortname": "Reliance, Inc.", "exchDisp": "NYSE", "quoteType": "EQUITY"},
+                {"symbol": "RELIANCE.NS", "longname": "Reliance Industries", "exchDisp": "NSE", "quoteType": "EQUITY"},
+                {"symbol": "0P0001.BO", "shortname": "A fund", "exchDisp": "Bombay", "quoteType": "MUTUALFUND"},
+            ]
+
+    market_data._search_cache.clear()
+    monkeypatch.setattr(market_data.yf, "Search", FakeSearch)
+    out = market_data.search_symbols("relia", prefer="NSE")
+    assert [m["symbol"] for m in out] == ["RELIANCE.NS", "RS"]

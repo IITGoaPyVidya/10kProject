@@ -126,3 +126,19 @@ button.primary:disabled { background: #94a3b8; box-shadow: none; cursor: not-all
 @keyframes fadeIn { from { opacity: 0; transform: translateY(3px); } }
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* Symbol autocomplete */
+.symbol-picker { position: relative; flex: 1.4; min-width: 240px; }
+.symbol-picker label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #6b7280; }
+.symbol-picker input { padding: 9px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; color: #111827; }
+.symbol-picker input:focus { outline: 2px solid #93c5fd; border-color: #2563eb; }
+.spinner.mini { position: absolute; right: 10px; bottom: 11px; width: 14px; height: 14px; }
+.suggestions { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; box-shadow: 0 12px 28px rgba(15, 23, 42, .16); max-height: 320px; overflow-y: auto; animation: fadeIn .15s ease; }
+.suggestions li { display: grid; grid-template-columns: 112px 1fr auto; gap: 10px; align-items: baseline; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.suggestions li.active { background: #eff6ff; }
+.suggestions li span { color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.suggestions li small { color: #6b7280; }
+.suggestions li.none { display: block; color: #6b7280; cursor: default; }
+.dym { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.dym button { border: 1px solid #fca5a5; background: #fff; border-radius: 99px; padding: 5px 12px; cursor: pointer; font-size: 13px; }
+.dym button:hover { background: #fef2f2; }
