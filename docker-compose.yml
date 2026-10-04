@@ -1,0 +1,42 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      args:
+        INSTALL_LOCAL: ${INSTALL_LOCAL:-false}   # true bundles FinBERT (CPU torch)
+    env_file: .env
+    environment:
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    volumes:
+      - hf-cache:/models                          # persists the FinBERT download
+    expose:
+      - "8000"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "${PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  hf-cache:
