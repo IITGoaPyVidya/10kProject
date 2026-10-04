@@ -3,6 +3,7 @@ import {
 } from "recharts";
 
 import type { AgentReport } from "../../types";
+import { useNarrow } from "../../useNarrow";
 import { fmtBig, fmtNum, fmtPct, RatingChip, Section } from "./ui";
 
 function Metrics({ rows }: { rows: [string, string][] }) {
@@ -84,6 +85,7 @@ function News({ d }: { d: AgentReport["data"] }) {
 }
 
 function AnnualReport({ d }: { d: AgentReport["data"] }) {
+  const narrow = useNarrow();
   const flags = [...(d.flags ?? [])].filter((f: { mentions: number }) => f.mentions > 0)
     .sort((a: { mentions: number }, b: { mentions: number }) => b.mentions - a.mentions);
   return (
@@ -92,9 +94,10 @@ function AnnualReport({ d }: { d: AgentReport["data"] }) {
       {flags.length > 0 && (
         <div className="chart">
           <ResponsiveContainer width="100%" height={Math.max(160, flags.length * 32)}>
-            <BarChart data={flags} layout="vertical" margin={{ left: 110 }}>
+            <BarChart data={flags} layout="vertical" margin={{ left: narrow ? 0 : 110 }}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" allowDecimals={false} /><YAxis type="category" dataKey="flag" width={190} />
+              <XAxis type="number" allowDecimals={false} />
+              <YAxis type="category" dataKey="flag" width={narrow ? 110 : 190} tick={{ fontSize: narrow ? 10 : 12 }} />
               <Tooltip /><Bar dataKey="mentions" fill="#dc2626" />
             </BarChart>
           </ResponsiveContainer>

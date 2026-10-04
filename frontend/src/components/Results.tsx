@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import type { AnalysisResult, Job, RedFlags, Sentiment } from "../types";
+import { useNarrow } from "../useNarrow";
 
 function SentimentView({ s }: { s: Sentiment }) {
   return (
@@ -59,6 +60,7 @@ function SentimentView({ s }: { s: Sentiment }) {
 }
 
 function RedFlagView({ r }: { r: RedFlags }) {
+  const narrow = useNarrow();
   const data = [...r.flags].sort((a, b) => b.mentions - a.mentions);
   return (
     <>
@@ -68,10 +70,10 @@ function RedFlagView({ r }: { r: RedFlags }) {
       </div>
       <div className="chart">
         <ResponsiveContainer width="100%" height={Math.max(260, data.length * 32)}>
-          <BarChart data={data} layout="vertical" margin={{ left: 120 }}>
+          <BarChart data={data} layout="vertical" margin={{ left: narrow ? 0 : 120 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis type="number" allowDecimals={false} />
-            <YAxis type="category" dataKey="flag" width={200} />
+            <YAxis type="category" dataKey="flag" width={narrow ? 110 : 200} tick={{ fontSize: narrow ? 10 : 12 }} />
             <Tooltip />
             <Bar dataKey="mentions" fill="#dc2626" />
           </BarChart>
